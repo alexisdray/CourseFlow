@@ -14,11 +14,10 @@
     </filter>
   </defs>
 </svg>
-<h2>Login</h2>
-<a href="{% url 'course_flow:registration' %}">Don't Have An Account?</a>
+<h2>Logout</h2>
 <form method="post">
-  {% csrf_token %} {{ form.as_p }}
-  <button type="submit">Login</button>
+  {% csrf_token %}
+  <button type="submit">Logout</button>
 </form>
 {% endblock %}
 <!-- -->
