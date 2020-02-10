@@ -67,8 +67,9 @@ TEMPLATES = [
     }
 ]
 
+LOGIN_URL = "course_flow:login"
 
-LOGIN_REDIRECT_URL = "login"
+LOGIN_REDIRECT_URL = "course_flow:home"
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

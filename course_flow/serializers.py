@@ -243,6 +243,8 @@ class StrategySerializer(serializers.ModelSerializer):
 
     parent_strategy = ParentStrategySerializer(allow_null=True)
 
+    num_children = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Strategy
         fields = [
@@ -258,7 +260,11 @@ class StrategySerializer(serializers.ModelSerializer):
             "outcomestrategy_set",
             "is_original",
             "parent_strategy",
+            "num_children",
         ]
+
+    def get_num_children(self, instance):
+        return instance.strategy_set.count()
 
     def get_nodestrategy_set(self, instance):
         links = instance.nodestrategy_set.all().order_by("rank")
@@ -328,7 +334,7 @@ class OutcomeActivitySerializer(serializers.ModelSerializer):
         fields = ["activity", "outcome", "added_on", "rank", "id"]
 
     def update(self, instance, validated_data):
-        instance.rank = validated_data.get("rank", instance.title)
+        instance.rank = validated_data.get("rank", instance.rank)
         outcome_data = self.initial_data.pop("outcome")
         outcome_serializer = OutcomeSerializer(
             Outcome.objects.get(id=outcome_data["id"]), outcome_data
@@ -374,10 +380,42 @@ class ActivitySerializer(serializers.ModelSerializer):
         return OutcomeActivitySerializer(links, many=True).data
 
     def create(self, validated_data):
-        return Activity.objects.create(
-            author=User.objects.get(username=self.initial_data["author"]),
-            **validated_data
-        )
+        if User.objects.filter(username=self.initial_data["author"]).exists():
+            author = User.objects.get(username=self.initial_data["author"])
+        else:
+            author = None
+        activity = Activity.objects.create(author=author, **validated_data)
+        """
+        do not update the following code, this will only be used for default strategy creation
+        """
+        if "strategyactivity_set" in self.initial_data.keys():
+            Strategy.objects.filter(default=True).update(default=False)
+            for strategyactivity_data in self.initial_data.pop(
+                "strategyactivity_set"
+            ):
+                strategy_data = strategyactivity_data.pop("strategy")
+                null_author = strategy_data.pop("author")
+                nodestrategy_set = strategy_data.pop("nodestrategy_set")
+                outcomestategy_set = strategy_data.pop("outcomestrategy_set")
+                strategy = Strategy.objects.create(
+                    author=author, **strategy_data
+                )
+                link = StrategyActivity.objects.create(
+                    strategy=strategy,
+                    activity=activity,
+                    rank=strategyactivity_data["rank"],
+                )
+                for nodestrategy_data in nodestrategy_set:
+                    node_data = nodestrategy_data.pop("node")
+                    null_author = node_data.pop("author")
+                    outcomenode_set = node_data.pop("outcomenode_set")
+                    node = Node.objects.create(author=author, **node_data)
+                    link = NodeStrategy.objects.create(
+                        node=node,
+                        strategy=strategy,
+                        rank=nodestrategy_data["rank"],
+                    )
+        return activity
 
     def update(self, instance, validated_data):
         instance.title = validated_data.get("title", instance.title)
