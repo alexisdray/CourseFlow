@@ -28,6 +28,14 @@
 
         window.addEventListener("load", function() {
 
+          userFeedback.injectDialog(
+            "{% trans 'Let us know how we can improve your experience!' %}",
+            "{% static 'course_flow/brand/SCIVERO-LOGO-DARK.png' %}",
+            "{% trans 'Thanks for your feedback!' %}",
+            "{% trans 'Sorry, please try again later!' %}",
+            "{% url 'user_feedback:post' %}"
+          );
+
 
           root.injectDialogForm(
             "{% url 'course_flow:dialog-form-create' %}",
@@ -64,7 +72,7 @@
 
           const weekWidth = 2*weekPadding+componentTotalSpacingHorizontal*4-componentSpacingHorizontal;
 
-          const classificationLabels = ["Activity","Preparation","Assesment","Artifact"];
+          const classificationLabels = ["Activity","Preparation","Assessment","Artifact"];
 
           function fetchThenRenderCourse(){
             d3.json("{% url 'course_flow:course-detail' pk=object.pk %}").then(function (json) {
@@ -92,14 +100,11 @@
 
               boardComponents
                 .append('text')
-                .style('font-family', 'Roboto')
                 .attr('class', 'component-title')
                 .attr('x', "15")
                 .attr('y', "20")
                 .attr('dy', 6)
                 .style('font-size', componentWidth/20)
-                .style('fill', "white")
-                .style('pointer-events', 'none')
                 .text(d => d.content_object.title);
 
                   const dragDropIcons = boardComponents
@@ -201,40 +206,28 @@
               svgCourse
                 .append('text')
                 .attr('id','course-title')
-                .style('font-family', 'Roboto')
                 .attr('class', 'course-title')
                 .attr('x', "15")
                 .attr('y', "20")
                 .attr('dy', 6)
-                .style('font-size', 18)
-                .style('fill', "white")
-                .style('pointer-events', 'none')
                 .text(jsonData.title);
 
               svgCourse
                 .append('text')
                 .attr('id','course-author')
-                .style('font-family', 'Roboto')
                 .attr('class', 'course-author')
                 .attr('x', "15")
                 .attr('y', "40")
                 .attr('dy', 6)
-                .style('font-size', 12)
-                .style('fill', 'white')
-                .style('pointer-events', 'none')
                 .text("created by "+jsonData.author);
 
               svgCourse
                 .append('text')
                 .attr('id','course-description')
-                .style('font-family', 'Roboto')
                 .attr('class', 'course-description')
                 .attr('x', "15")
                 .attr('y', "70")
                 .attr('dy', 6)
-                .style('font-size', 14)
-                .style('fill', "white")
-                .style('pointer-events', 'none')
                 .text(jsonData.description);
 
               svgCourse.append("g")
@@ -297,15 +290,11 @@
                 for (let i=0; i<4; i++) {
                   svgCourse
                     .append('text')
-                    .style('font-family', 'Roboto')
-                    .attr('class','activity-classification')
+                    .attr('class','course-classification')
                     .attr('text-anchor',"middle")
                     .attr('x', `${componentTotalSpacingHorizontal*i+componentTotalSpacingHorizontal/2}`)
                     .attr('y', "160")
                     .attr('dy', 6)
-                    .style('font-size', 16)
-                    .style('fill', "white")
-                    .style('pointer-events', 'none')
                     .text(classificationLabels[i]);
                 }
 
@@ -341,26 +330,18 @@
 
                     weeks
                       .append('text')
-                      .style('font-family', 'Roboto')
                       .attr('class', 'week-title')
                       .attr('x', "15")
                       .attr('y', "20")
                       .attr('dy', 6)
-                      .style('font-size', 18)
-                      .style('fill', "white")
-                      .style('pointer-events', 'none')
                       .text(d => d.week.title);
 
                     weeks
                       .append('text')
-                      .style('font-family', 'Roboto')
                       .attr('class', 'week-author')
                       .attr('x', "15")
                       .attr('y', "40")
                       .attr('dy', 6)
-                      .style('font-size', 12)
-                      .style('fill', 'white')
-                      .style('pointer-events', 'none')
                       .text(d=> "created by "+d.week.author);
 
                   weeks.append("g")
@@ -506,11 +487,7 @@
 
               let rects = svg.selectAll('.component')['_groups'][0];
 
-              console.log(rects);
-
               sortedRects = [rects.length];
-
-              console.log(rects.length)
 
               for(let i=0; i<rects.length; i++){
                   for(let j=0; j<rects.length; j++){
@@ -521,8 +498,6 @@
                   else if(rects[j].__data__.rank>rects.length-1) sortedRects[rects.length-1]=rects[j];
                 }
               }
-
-              console.log(sortedRects);
 
               for(let i=0; i<rects.length-1; i++){
                   svg.append("path")
@@ -552,39 +527,58 @@
 
             components
               .append('text')
-              .style('font-family', 'Roboto')
               .attr('class', 'component-title')
               .attr('x', "15")
               .attr('y', "20")
               .attr('dy', 6)
-              .style('font-size', 18)
-              .style('fill', "white")
-              .style('pointer-events', 'none')
+              .style('font-size', componentHeight/12)
               .text(d => d.component.content_object.title);
 
               components
                 .append('text')
-                .style('font-family', 'Roboto')
                 .attr('class', 'component-author')
                 .attr('x', "15")
-                .attr('y', "40")
+                .attr('y', "35")
                 .attr('dy', 6)
-                .style('font-size', 12)
-                .style('fill', 'white')
-                .style('pointer-events', 'none')
+                .style('font-size', componentHeight/18)
                 .text(d=> "created by "+d.component.content_object.author);
+
+                  // following function taken from Mike Bostock's 'Wrapping Long Labels'
+
+                function wrap(text, width) {
+                    text.each(function() {
+                      var text = d3.select(this),
+                          words = text.text().split(/\s+/).reverse(),
+                          word,
+                          line = [],
+                          lineNumber = 0,
+                          lineHeight = 1.5, // ems
+                          y = text.attr("y")
+                          x = text.attr("x"),
+                          dy = parseFloat(text.attr("dy")),
+                          tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
+                      while (word = words.pop()) {
+                        line.push(word);
+                        tspan.text(line.join(" "));
+                        if (tspan.node().getComputedTextLength() > width) {
+                          line.pop();
+                          tspan.text(line.join(" "));
+                          line = [word];
+                          tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                        }
+                      }
+                    });
+                  }
 
                 components
                   .append('text')
-                  .style('font-family', 'Roboto')
                   .attr('class', 'component-description')
                   .attr('x', "15")
-                  .attr('y', "70")
+                  .attr('y', "5")
                   .attr('dy', 6)
-                  .style('font-size', 14)
-                  .style('fill', "white")
-                  .style('pointer-events', 'none')
-                  .text(d => d.component.content_object.description);
+                  .style('font-size', componentHeight/16)
+                  .text(d => d.component.content_object.description)
+                  .call(wrap, componentWidth-60);
 
                 components.append("g")
                   .attr("class", "action-icon delete-component")

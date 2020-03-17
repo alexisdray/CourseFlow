@@ -4,7 +4,7 @@ from .models import (
     Course,
     Preparation,
     Activity,
-    Assesment,
+    Assessment,
     Artifact,
     Strategy,
     Node,
@@ -16,6 +16,8 @@ from .models import (
     Week,
     Program,
     ComponentProgram,
+    NodeCompletionStatus,
+    ComponentCompletionStatus,
 )
 from .serializers import (
     serializer_lookups,
@@ -28,27 +30,29 @@ from .serializers import (
     ProgramLevelComponentSerializer,
     WeekSerializer,
     ArtifactSerializer,
-    AssesmentSerializer,
+    AssessmentSerializer,
     PreparationSerializer,
 )
 from .decorators import ajax_login_required, is_owner, is_parent_owner
 from django.urls import reverse
 from django.views.generic.edit import CreateView
 from django.views.generic import DetailView, UpdateView
-from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.renderers import JSONRenderer
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.db.models import Count
 import json
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group
 from .forms import RegistrationForm
 from django.shortcuts import render, redirect
+from django.db.models import ProtectedError
+from django.core.exceptions import ValidationError
 
 
 def registration_view(request):
@@ -72,9 +76,21 @@ def registration_view(request):
 @login_required
 def home_view(request):
     context = {
-        "programs": Program.objects.all(),
-        "courses": Course.objects.all(),
-        "activities": Activity.objects.all(),
+        "programs": Program.objects.exclude(author=request.user),
+        "courses": Course.objects.exclude(author=request.user, static=True),
+        "activities": Activity.objects.exclude(
+            author=request.user, static=True
+        ),
+        "owned_programs": Program.objects.filter(author=request.user),
+        "owned_courses": Course.objects.filter(
+            author=request.user, static=False
+        ),
+        "owned_activities": Activity.objects.filter(
+            author=request.user, static=False
+        ),
+        "owned_static_courses": Course.objects.filter(
+            author=request.user, static=True
+        ),
     }
     return render(request, "course_flow/home.html", context)
 
@@ -100,15 +116,27 @@ class ProgramViewSet(LoginRequiredMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Program.objects.all()
 
 
-class ProgramDetailView(LoginRequiredMixin, DetailView):
+class ProgramDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Program
     template_name = "course_flow/program_detail.html"
 
+    def test_func(self):
+        return (
+            Group.objects.get(name=settings.TEACHER_GROUP)
+            in self.request.user.groups.all()
+        )
 
-class ProgramCreateView(LoginRequiredMixin, CreateView):
+
+class ProgramCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Program
     fields = ["title", "description"]
     template_name = "course_flow/program_create.html"
+
+    def test_func(self):
+        return (
+            Group.objects.get(name=settings.TEACHER_GROUP)
+            in self.request.user.groups.all()
+        )
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -131,9 +159,9 @@ class ProgramUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super(UpdateView, self).get_context_data(**kwargs)
         component_set = set()
-        for course in Course.objects.filter(author=self.request.user).order_by(
-            "-last_modified"
-        )[:10]:
+        for course in Course.objects.filter(
+            author=self.request.user, static=False
+        ).order_by("-last_modified")[:10]:
             component, created = Component.objects.get_or_create(
                 object_id=course.id,
                 content_type=ContentType.objects.get_for_model(Course),
@@ -159,15 +187,37 @@ class ProgramUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         )
 
 
-class CourseDetailView(LoginRequiredMixin, DetailView):
+class CourseDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Course
     template_name = "course_flow/course_detail.html"
 
+    def test_func(self):
+        return (
+            Group.objects.get(name=settings.TEACHER_GROUP)
+            in self.request.user.groups.all()
+        )
 
-class CourseCreateView(LoginRequiredMixin, CreateView):
+
+class StaticCourseDetailView(LoginRequiredMixin, DetailView):
+    model = Course
+    template_name = "course_flow/course_detail_static.html"
+
+
+class StudentCourseDetailView(LoginRequiredMixin, DetailView):
+    model = Course
+    template_name = "course_flow/course_detail_student.html"
+
+
+class CourseCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Course
     fields = ["title", "description"]
     template_name = "course_flow/course_create.html"
+
+    def test_func(self):
+        return (
+            Group.objects.get(name=settings.TEACHER_GROUP)
+            in self.request.user.groups.all()
+        )
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -191,7 +241,7 @@ class CourseUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         context = super(UpdateView, self).get_context_data(**kwargs)
         component_set = set()
         for activity in Activity.objects.filter(
-            author=self.request.user
+            author=self.request.user, static=False
         ).order_by("-last_modified")[:10]:
             component, created = Component.objects.get_or_create(
                 object_id=activity.id,
@@ -218,15 +268,37 @@ class CourseUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         )
 
 
-class ActivityDetailView(LoginRequiredMixin, DetailView):
+class ActivityDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Activity
     template_name = "course_flow/activity_detail.html"
 
+    def test_func(self):
+        return (
+            Group.objects.get(name=settings.TEACHER_GROUP)
+            in self.request.user.groups.all()
+        )
 
-class ActivityCreateView(LoginRequiredMixin, CreateView):
+
+class StaticActivityDetailView(LoginRequiredMixin, DetailView):
+    model = Activity
+    template_name = "course_flow/activity_detail_static.html"
+
+
+class StudentActivityDetailView(LoginRequiredMixin, DetailView):
+    model = Activity
+    template_name = "course_flow/activity_detail_student.html"
+
+
+class ActivityCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Activity
     fields = ["title", "description"]
     template_name = "course_flow/activity_create.html"
+
+    def test_func(self):
+        return (
+            Group.objects.get(name=settings.TEACHER_GROUP)
+            in self.request.user.groups.all()
+        )
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -272,7 +344,6 @@ def save_serializer(serializer) -> HttpResponse:
             serializer.save()
             return JsonResponse({"action": "posted"})
         else:
-            print(serializer.errors)
             return JsonResponse({"action": "error"})
     else:
         return JsonResponse({"action": "error"})
@@ -339,7 +410,7 @@ def add_node(request: HttpRequest) -> HttpResponse:
             strategy=strategy, node=duplicate_node(node, request.user), rank=0
         )
 
-    except:
+    except ValidationError:
         return JsonResponse({"action": "error"})
 
     return JsonResponse({"action": "posted"})
@@ -379,10 +450,41 @@ def add_strategy(request: HttpRequest) -> HttpResponse:
             strategy=duplicate_strategy(strategy, request.user),
             rank=0,
         )
-    except:
+    except ValidationError:
         return JsonResponse({"action": "error"})
 
     return JsonResponse({"action": "posted"})
+
+
+def duplicate_activity(activity: Activity, author: User) -> Activity:
+    new_activity = Activity.objects.create(
+        title=activity.title,
+        description=activity.description,
+        author=author,
+        is_original=False,
+        parent_activity=activity,
+    )
+    for strategy in activity.strategies.all():
+        StrategyActivity.objects.create(
+            activity=new_activity,
+            strategy=duplicate_strategy(strategy, author),
+            rank=StrategyActivity.objects.get(
+                activity=activity, strategy=strategy
+            ).rank,
+        )
+    return new_activity
+
+
+@require_POST
+@ajax_login_required
+def duplicate_activity_ajax(request: HttpRequest) -> HttpResponse:
+    activity = Activity.objects.get(pk=request.POST.get("activityPk"))
+    try:
+        clone = duplicate_activity(activity, request.user)
+    except ValidationError:
+        return JsonResponse({"action": "error"})
+
+    return JsonResponse({"action": "posted", "clone_pk": clone.pk})
 
 
 def duplicate_component(component: Component, author: User) -> Component:
@@ -406,19 +508,236 @@ def duplicate_component(component: Component, author: User) -> Component:
                 parent_preparation=component.content_object,
             )
         )
-    elif type(component.content_object) == Assesment:
+    elif type(component.content_object) == Assessment:
         new_component = Component.objects.create(
-            content_object=Assesment.objects.create(
+            content_object=Assessment.objects.create(
                 title=component.content_object.title,
                 description=component.content_object.description,
                 author=author,
                 is_original=False,
-                parent_assesment=component.content_object,
+                parent_assessment=component.content_object,
             )
         )
-    else:
-        return component
+    elif type(component.content_object) == Activity:
+        new_component = Component.objects.create(
+            content_object=duplicate_activity(component.content_object, author)
+        )
     return new_component
+
+
+def duplicate_week(week: Week, author: User) -> Week:
+    new_week = Week.objects.create(title=week.title, author=author)
+    for componentweek in ComponentWeek.objects.filter(week=week):
+        ComponentWeek.objects.create(
+            week=new_week,
+            component=duplicate_component(componentweek.component, author),
+            rank=componentweek.rank,
+        )
+    return new_week
+
+
+def duplicate_course(course: Course, author: User) -> Course:
+    new_course = Course.objects.create(
+        title=course.title,
+        description=course.description,
+        author=author,
+        is_original=False,
+        parent_course=course,
+    )
+    for week in course.weeks.all():
+        WeekCourse.objects.create(
+            course=new_course,
+            week=duplicate_week(week, author),
+            rank=WeekCourse.objects.get(week=week, course=course).rank,
+        )
+    return new_course
+
+
+@require_POST
+@ajax_login_required
+def duplicate_course_ajax(request: HttpRequest) -> HttpResponse:
+    course = Course.objects.get(pk=request.POST.get("coursePk"))
+    try:
+        clone = duplicate_course(course, request.user)
+    except ValidationError:
+        return JsonResponse({"action": "error"})
+
+    return JsonResponse({"action": "posted", "clone_pk": clone.pk})
+
+
+def get_owned_courses(user: User):
+    return Course.objects.filter(author=user, static=False).order_by(
+        "-last_modified"
+    )[:10]
+
+
+def setup_link_to_group(course_pk, students) -> Course:
+
+    course = Course.objects.get(pk=course_pk)
+
+    clone = duplicate_course(course, course.author)
+    clone.static = True
+    clone.title += " -- Live"
+    clone.save()
+    clone.students.add(*students)
+    for week in clone.weeks.all():
+        for component in week.components.exclude(
+            content_type=ContentType.objects.get_for_model(Activity)
+        ):
+            component.students.add(*students)
+        for component in week.components.filter(
+            content_type=ContentType.objects.get_for_model(Activity)
+        ):
+            activity = component.content_object
+            activity.static = True
+            activity.save()
+            activity.students.add(*students)
+            for strategy in activity.strategies.all():
+                for node in strategy.nodes.all():
+                    node.students.add(*students)
+    return clone
+
+
+def setup_unlink_from_group(course_pk):
+    Course.objects.get(pk=course_pk).delete()
+    return "done"
+
+
+def remove_student_from_group(student, course):
+    course.students.remove(student)
+    for week in course.weeks.all():
+        for component in week.components.exclude(
+            content_type=ContentType.objects.get_for_model(Activity)
+        ):
+            ComponentCompletionStatus.objects.get(
+                student=student, component=component
+            ).delete()
+        for component in week.components.filter(
+            content_type=ContentType.objects.get_for_model(Activity)
+        ):
+            activity = component.content_object
+            activity.students.remove(student)
+            for strategy in activity.strategies.all():
+                for node in strategy.nodes.all():
+                    NodeCompletionStatus.objects.get(
+                        student=student, node=node
+                    ).delete()
+
+
+def add_student_to_group(student, course):
+    course.students.add(student)
+    for week in course.weeks.all():
+        for component in week.components.exclude(
+            content_type=ContentType.objects.get_for_model(Activity)
+        ):
+            ComponentCompletionStatus.objects.create(
+                student=student, component=component
+            )
+        for component in week.components.filter(
+            content_type=ContentType.objects.get_for_model(Activity)
+        ):
+            activity = component.content_object
+            activity.students.add(student)
+            for strategy in activity.strategies.all():
+                for node in strategy.nodes.all():
+                    NodeCompletionStatus.objects.create(
+                        student=student, node=node
+                    )
+
+
+@require_POST
+@ajax_login_required
+def switch_node_completion_status(request: HttpRequest) -> HttpResponse:
+    node = Node.objects.get(pk=request.POST.get("pk"))
+    is_completed = request.POST.get("isCompleted")
+
+    status = NodeCompletionStatus.objects.get(node=node, student=request.user)
+
+    try:
+        if is_completed == "true":
+            status.is_completed = True
+        else:
+            status.is_completed = False
+
+        status.save()
+    except:
+        return JsonResponse({"action": "error"})
+
+    return JsonResponse({"action": "posted"})
+
+
+@require_POST
+@ajax_login_required
+def switch_component_completion_status(request: HttpRequest) -> HttpResponse:
+    component = Component.objects.get(pk=request.POST.get("pk"))
+    is_completed = request.POST.get("isCompleted")
+
+    try:
+        status = ComponentCompletionStatus.objects.get(
+            component=component, student=request.user
+        )
+
+        if is_completed == "true":
+            status.is_completed = True
+        else:
+            status.is_completed = False
+
+        status.save()
+    except:
+        return JsonResponse({"action": "error"})
+
+    return JsonResponse({"action": "posted"})
+
+
+@ajax_login_required
+def get_node_completion_status(request: HttpRequest) -> HttpResponse:
+
+    status = NodeCompletionStatus.objects.get(
+        node=Node.objects.get(pk=request.GET.get("nodePk")),
+        student=request.user,
+    )
+
+    return JsonResponse(
+        {"action": "got", "completion_status": status.is_completed}
+    )
+
+
+@ajax_login_required
+def get_component_completion_status(request: HttpRequest) -> HttpResponse:
+
+    status = ComponentCompletionStatus.objects.get(
+        component=Component.objects.get(pk=request.GET.get("componentPk")),
+        student=request.user,
+    )
+
+    return JsonResponse(
+        {"action": "got", "completion_status": status.is_completed}
+    )
+
+
+@ajax_login_required
+def get_node_completion_count(request: HttpRequest) -> HttpResponse:
+
+    statuses = NodeCompletionStatus.objects.filter(
+        node=Node.objects.get(pk=request.GET.get("nodePk")), is_completed=True
+    )
+
+    return JsonResponse(
+        {"action": "got", "completion_status": statuses.count()}
+    )
+
+
+@ajax_login_required
+def get_component_completion_count(request: HttpRequest) -> HttpResponse:
+
+    statuses = ComponentCompletionStatus.objects.filter(
+        component=Component.objects.get(pk=request.GET.get("componentPk")),
+        is_completed=True,
+    )
+
+    return JsonResponse(
+        {"action": "got", "completion_status": statuses.count()}
+    )
 
 
 @require_POST
@@ -428,17 +747,22 @@ def add_component_to_course(request: HttpRequest) -> HttpResponse:
     week = Week.objects.get(pk=request.POST.get("weekPk"))
     component = Component.objects.get(pk=request.POST.get("componentPk"))
 
+    if (
+        ComponentWeek.objects.filter(week=week, component=component)
+        or Course.objects.filter(weeks=week).first().static
+    ):
+        component = duplicate_component(component, request.user)
+        component_object = component.content_object
+        component_object.title += " (duplicate)"
+        component_object.save()
+
     try:
         for link in ComponentWeek.objects.filter(week=week):
             link.rank += 1
             link.save()
 
-        ComponentWeek.objects.create(
-            week=week,
-            component=duplicate_component(component, request.user),
-            rank=0,
-        )
-    except:
+        ComponentWeek.objects.create(week=week, component=component, rank=0)
+    except ValidationError:
         return JsonResponse({"action": "error"})
 
     return JsonResponse({"action": "posted"})
@@ -457,11 +781,9 @@ def add_component_to_program(request: HttpRequest) -> HttpResponse:
             link.save()
 
         ComponentProgram.objects.create(
-            program=program,
-            component=duplicate_component(component, request.user),
-            rank=0,
+            program=program, component=component, rank=0
         )
-    except:
+    except ValidationError:
         return JsonResponse({"action": "error"})
 
     return JsonResponse({"action": "posted"})
@@ -496,7 +818,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                     link.rank += 1
                     link.save()
                 NodeStrategy.objects.create(strategy=strategy, node=node)
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     elif model == "strategy":
@@ -516,7 +838,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                 StrategyActivity.objects.create(
                     activity=activity, strategy=strategy
                 )
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     elif model == "activity":
@@ -535,23 +857,23 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                     link.rank += 1
                     link.save()
                 ComponentWeek.objects.create(week=week, component=component)
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
-    elif model == "assesment":
+    elif model == "assessment":
         del data["work_classification"], data["activity_classification"]
         data["parent_activity"] = None
-        serializer = AssesmentSerializer(data=data)
+        serializer = AssessmentSerializer(data=data)
         if parent_id:
             if serializer.is_valid():
-                assesment = serializer.save()
+                assessment = serializer.save()
             else:
                 return JsonResponse({"action": "error"})
             try:
                 if is_program_level:
                     program = Program.objects.get(id=parent_id)
                     component = Component.objects.create(
-                        content_object=assesment
+                        content_object=assessment
                     )
                     for link in ComponentProgram.objects.filter(
                         program=program
@@ -564,7 +886,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                 else:
                     week = Week.objects.get(id=parent_id)
                     component = Component.objects.create(
-                        content_object=assesment
+                        content_object=assessment
                     )
                     for link in ComponentWeek.objects.filter(week=week):
                         link.rank += 1
@@ -572,7 +894,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                     ComponentWeek.objects.create(
                         week=week, component=component
                     )
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     elif model == "artifact":
@@ -591,7 +913,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                     link.rank += 1
                     link.save()
                 ComponentWeek.objects.create(week=week, component=component)
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     elif model == "preparation":
@@ -612,7 +934,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                     link.rank += 1
                     link.save()
                 ComponentWeek.objects.create(week=week, component=component)
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     elif model == "week":
@@ -630,7 +952,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                     link.rank += 1
                     link.save()
                 WeekCourse.objects.create(course=course, week=week)
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     elif model == "course":
@@ -651,7 +973,7 @@ def dialog_form_create(request: HttpRequest) -> HttpResponse:
                 ComponentProgram.objects.create(
                     program=program, component=component
                 )
-            except:
+            except ValidationError:
                 return JsonResponse({"action": "error"})
             return JsonResponse({"action": "posted"})
     return save_serializer(serializer)
@@ -680,7 +1002,7 @@ def dialog_form_delete(request: HttpRequest) -> HttpResponse:
 
     try:
         model_lookups[model].objects.get(id=id).delete()
-    except:
+    except ProtectedError:
         return JsonResponse({"action": "error"})
 
     return JsonResponse({"action": "posted"})
@@ -698,7 +1020,7 @@ def dialog_form_remove(request: HttpRequest) -> HttpResponse:
             ComponentProgram.objects.get(id=link_id).delete()
         else:
             ComponentWeek.objects.get(id=link_id).delete()
-    except:
+    except ProtectedError:
         return JsonResponse({"action": "error"})
 
     return JsonResponse({"action": "posted"})

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete, post_save
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 
@@ -24,11 +24,20 @@ class Outcome(models.Model):
     def __str__(self):
         return self.title
 
+    class Meta:
+        verbose_name = "Outcome"
+        verbose_name_plural = "Outcomes"
+
 
 class Node(models.Model):
     title = models.CharField(max_length=30)
     description = models.TextField(max_length=400)
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    author = models.ForeignKey(
+        User,
+        related_name="authored_nodes",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     created_on = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -101,8 +110,25 @@ class Node(models.Model):
         Outcome, through="OutcomeNode", blank=True
     )
 
+    students = models.ManyToManyField(
+        User,
+        related_name="assigned_nodes",
+        through="NodeCompletionStatus",
+        blank=True,
+    )
+
     def __str__(self):
         return self.title
+
+
+class NodeCompletionStatus(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    node = models.ForeignKey(Node, on_delete=models.CASCADE)
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Node Completion Status"
+        verbose_name_plural = "Node Completion Statuses"
 
 
 class OutcomeNode(models.Model):
@@ -110,6 +136,10 @@ class OutcomeNode(models.Model):
     outcome = models.ForeignKey(Outcome, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Outcome-Node Link"
+        verbose_name_plural = "Outcome-Node Links"
 
 
 class Strategy(models.Model):
@@ -135,12 +165,20 @@ class Strategy(models.Model):
     def __str__(self):
         return self.title
 
+    class Meta:
+        verbose_name = "Strategy"
+        verbose_name_plural = "Strategies"
+
 
 class OutcomeStrategy(models.Model):
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE)
     outcome = models.ForeignKey(Outcome, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Outcome-Strategy Link"
+        verbose_name_plural = "Outcome-Strategy Links"
 
 
 class NodeStrategy(models.Model):
@@ -149,13 +187,28 @@ class NodeStrategy(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Node-Strategy Link"
+        verbose_name_plural = "Node-Strategy Links"
+
 
 class Activity(models.Model):
     title = models.CharField(max_length=30)
     description = models.TextField(max_length=400)
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    author = models.ForeignKey(
+        User,
+        related_name="authored_activities",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     created_on = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
+
+    static = models.BooleanField(default=False)
+
+    students = models.ManyToManyField(
+        User, related_name="assigned_activities", blank=True
+    )
 
     parent_activity = models.ForeignKey(
         "Activity", on_delete=models.SET_NULL, null=True
@@ -175,6 +228,10 @@ class Activity(models.Model):
     def __str__(self):
         return self.title
 
+    class Meta:
+        verbose_name = "Activity"
+        verbose_name_plural = "Activities"
+
 
 class OutcomeActivity(models.Model):
     activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
@@ -182,12 +239,20 @@ class OutcomeActivity(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Outcome-Activity Link"
+        verbose_name_plural = "Outcome-Activity Links"
+
 
 class StrategyActivity(models.Model):
     activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Strategy-Activity Link"
+        verbose_name_plural = "Strategy-Activity Links"
 
 
 class Preparation(models.Model):
@@ -218,6 +283,10 @@ class OutcomePreparation(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Outcome-Preparation Link"
+        verbose_name_plural = "Outcome-Preparation Links"
+
 
 class Artifact(models.Model):
     title = models.CharField(max_length=30)
@@ -247,34 +316,42 @@ class OutcomeArtifact(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Outcome-Artifact Link"
+        verbose_name_plural = "Outcome-Artifact Links"
 
-class Assesment(models.Model):
+
+class Assessment(models.Model):
     title = models.CharField(max_length=30)
     description = models.TextField(max_length=400)
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_on = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
-    parent_assesment = models.ForeignKey(
-        "Assesment", on_delete=models.SET_NULL, null=True
+    parent_assessment = models.ForeignKey(
+        "Assessment", on_delete=models.SET_NULL, null=True
     )
     is_original = models.BooleanField(default=True)
 
     hash = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     outcomes = models.ManyToManyField(
-        Outcome, through="OutcomeAssesment", blank=True
+        Outcome, through="OutcomeAssessment", blank=True
     )
 
     def __str__(self):
         return self.title
 
 
-class OutcomeAssesment(models.Model):
-    assesment = models.ForeignKey(Assesment, on_delete=models.CASCADE)
+class OutcomeAssessment(models.Model):
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
     outcome = models.ForeignKey(Outcome, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Outcome-Assessment Link"
+        verbose_name_plural = "Outcome-Assessment Links"
 
 
 class Week(models.Model):
@@ -302,14 +379,39 @@ class OutcomeWeek(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Outcome-Week Link"
+        verbose_name_plural = "Outcome-Week Links"
+
 
 class Component(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
 
+    students = models.ManyToManyField(
+        User,
+        related_name="assigned_componenets",
+        through="ComponentCompletionStatus",
+        blank=True,
+    )
+
     def __str__(self):
-        return self.content_object
+        return (
+            self.content_type.model_class()
+            .objects.get(id=self.object_id)
+            .title
+        )
+
+
+class ComponentCompletionStatus(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE)
+    component = models.ForeignKey(Component, on_delete=models.CASCADE)
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Component Completion Status"
+        verbose_name_plural = "Component Completion Statuses"
 
 
 class ComponentWeek(models.Model):
@@ -317,6 +419,10 @@ class ComponentWeek(models.Model):
     component = models.ForeignKey(Component, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Component-Week Link"
+        verbose_name_plural = "Component-Week Links"
 
 
 class Discipline(models.Model):
@@ -338,11 +444,22 @@ class Discipline(models.Model):
 class Course(models.Model):
     title = models.CharField(max_length=30)
     description = models.TextField(max_length=400)
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    author = models.ForeignKey(
+        User,
+        related_name="authored_courses",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     created_on = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     discipline = models.ForeignKey(
         Discipline, on_delete=models.SET_NULL, null=True
+    )
+
+    static = models.BooleanField(default=False)
+
+    students = models.ManyToManyField(
+        User, related_name="assigned_courses", blank=True
     )
 
     parent_course = models.ForeignKey(
@@ -368,12 +485,20 @@ class WeekCourse(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Week-Course Link"
+        verbose_name_plural = "Week-Course Links"
+
 
 class OutcomeCourse(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     outcome = models.ForeignKey(Outcome, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Outcome-Course Link"
+        verbose_name_plural = "Outcome-Course Links"
 
 
 class Program(models.Model):
@@ -403,12 +528,20 @@ class ComponentProgram(models.Model):
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        verbose_name = "Component-Program Link"
+        verbose_name_plural = "Component-Program Links"
+
 
 class OutcomeProgram(models.Model):
     program = models.ForeignKey(Program, on_delete=models.CASCADE)
     outcome = models.ForeignKey(Outcome, on_delete=models.CASCADE)
     added_on = models.DateTimeField(auto_now_add=True)
     rank = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Outcome-Program Link"
+        verbose_name_plural = "Outcome-Program Links"
 
 
 @receiver(pre_delete, sender=NodeStrategy)
@@ -457,7 +590,7 @@ def reorder_for_deleted_component_program(sender, instance, **kwargs):
 
 
 @receiver(pre_delete, sender=Activity)
-@receiver(pre_delete, sender=Assesment)
+@receiver(pre_delete, sender=Assessment)
 @receiver(pre_delete, sender=Artifact)
 @receiver(pre_delete, sender=Preparation)
 @receiver(pre_delete, sender=Course)
@@ -468,11 +601,69 @@ def delete_attached_component(sender, instance, **kwargs):
     ).delete()
 
 
+@receiver(pre_delete, sender=Course)
+def delete_course_objects(sender, instance, **kwargs):
+    if instance.static:
+        for week in instance.weeks.all():
+            for component in week.components.all():
+                component.content_object.delete()
+    instance.weeks.all().delete()
+
+
+@receiver(pre_delete, sender=Activity)
+def delete_activity_objects(sender, instance, **kwargs):
+    instance.strategies.all().delete()
+
+
+@receiver(pre_delete, sender=Strategy)
+def delete_strategy_objects(sender, instance, **kwargs):
+    instance.nodes.all().delete()
+
+
+@receiver(post_save, sender=NodeStrategy)
+def switch_node_to_static(sender, instance, created, **kwargs):
+    if created:
+        activity = Activity.objects.filter(
+            strategies=instance.strategy
+        ).first()
+        if activity:
+            if activity.static:
+                instance.node.students.add(*list(activity.students.all()))
+
+
+@receiver(post_save, sender=StrategyActivity)
+def switch_strategy_to_static(sender, instance, created, **kwargs):
+    if created:
+        if instance.activity.static:
+            for node in instance.strategy.nodes.all():
+                node.students.add(*list(instance.activity.students.all()))
+
+
+@receiver(post_save, sender=ComponentWeek)
+def switch_component_to_static(sender, instance, created, **kwargs):
+    if created:
+        course = Course.objects.filter(weeks=instance.week).first()
+        if course:
+            if course.static:
+                if type(instance.component.content_object) != Activity:
+                    instance.component.students.add(
+                        *list(course.students.all())
+                    )
+                else:
+                    activity = instance.component.content_object
+                    activity.static = True
+                    activity.save()
+                    activity.students.add(*list(course.students.all()))
+                    for strategy in activity.strategies.all():
+                        for node in strategy.nodes.all():
+                            node.students.add(*list(course.students.all()))
+
+
 model_lookups = {
     "node": Node,
     "strategy": Strategy,
     "activity": Activity,
-    "assesment": Assesment,
+    "assessment": Assessment,
     "preparation": Preparation,
     "artifact": Artifact,
     "week": Week,
@@ -483,7 +674,7 @@ model_keys = [
     "node",
     "strategy",
     "activity",
-    "assesment",
+    "assessment",
     "preparation",
     "artifact",
     "week",

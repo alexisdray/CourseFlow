@@ -146,3 +146,41 @@ body {
 .mdc-dialog__surface{
   width: 50vw;
 }
+text {
+  font-family: Roboto;
+  pointer-events: none;
+  fill: white;
+}
+#activity-title, #course-title, #program-title, .stategy-title, .week-title {
+  font-size: 18px;
+}
+#activity-author, #course-author, #program-author, .strategy-author, .week-author  {
+  font-size: 12px;
+}
+#activity-description, #course-description, #program-description, .strategy-description {
+  font-size: 14px;
+}
+.component-completion-count, .node-completion-count{
+  fill: rgb(172,184,191);
+}
+.activity-classification, .course-classification, .program-classification {
+  font-size: 16px;
+}
+.sub-container {
+ width: 40%;
+ position: absolute;
+}
+#user-content-container {
+  left: 10%;
+}
+#total-content-container {
+  right: 0;
+}
+h2:not(.mdc-dialog__header__title), p {
+  font-family: "Montserrat", serif;
+  color: #F4F4F4;
+}
+h1 {
+  font-family: "Montserrat", serif;
+  color: #F4F4F4;
+}

@@ -9,6 +9,7 @@ import Icon from "preact-material-components/Icon";
 import IconButton from "preact-material-components/IconButton";
 import Select from "preact-material-components/Select";
 import Snackbar from "preact-material-components/Snackbar";
+import Checkbox from "preact-material-components/Checkbox";
 
 export class DialogForm extends Component {
   state = {
@@ -394,7 +395,7 @@ export class DialogForm extends Component {
                       style="min-width:180px;"
                     >
                       <Select.Item value="course">Course</Select.Item>
-                      <Select.Item value="assesment">Assesment</Select.Item>
+                      <Select.Item value="assessment">Assessment</Select.Item>
                     </Select>
                   </div>
                 )}
@@ -407,7 +408,7 @@ export class DialogForm extends Component {
                       style="min-width:180px;"
                     >
                       <Select.Item value="activity">Activity</Select.Item>
-                      <Select.Item value="assesment">Assesment</Select.Item>
+                      <Select.Item value="assessment">Assessment</Select.Item>
                       <Select.Item value="artifact">Artifact</Select.Item>
                       <Select.Item value="preparation">Preparation</Select.Item>
                     </Select>
@@ -522,6 +523,110 @@ export class DialogForm extends Component {
   }
 }
 
+export class StudentCompletionStatusDialog extends Component {
+  state = {
+    object: null,
+    objectType: null,
+    isComponent: null,
+    isCompleted: null
+  };
+
+  componentDidMount = e => {
+    currentStudentComponentInstance = this;
+  };
+
+  onSubmit = e => {
+    switchCompletion(this);
+    e.preventDefault();
+    this.setState({
+      object: null,
+      objectType: null,
+      isComponent: null,
+      isCompleted: null
+    });
+  };
+
+  onClose = e => {
+    e.preventDefault();
+    this.setState({
+      object: null,
+      objectType: null,
+      isComponent: null,
+      isCompleted: null
+    });
+  };
+
+  updateIsCompleted = e => {
+    this.setState({ isCompleted: !this.state.isCompleted });
+  };
+
+  render() {
+    return (
+      <div>
+        <Dialog
+          style="padding: 0; border: 0; width: 0;"
+          ref={dlg => {
+            this.dlg = dlg;
+          }}
+        >
+          <form class="student-node-form">
+            <Dialog.Header>
+              {this.state.isComponent &&
+                this.state.object &&
+                this.state.object.content_object.title}
+              {!this.state.isComponent &&
+                this.state.object &&
+                this.state.object.title}
+            </Dialog.Header>
+            <Dialog.Body scrollable={false}>
+              <div id="description">
+                {this.state.isComponent &&
+                  this.state.object &&
+                  this.state.object.content_object.description}
+                {!this.state.isComponent &&
+                  this.state.object &&
+                  this.state.object.description}
+              </div>
+              <FormField>
+                <label for="completion-checkbox" id="completion-checkbox-label">
+                  Have you completed this task?
+                </label>
+                <Checkbox
+                  id="completion-checkbox"
+                  checked={this.state.isCompleted}
+                  onchange={this.updateIsCompleted}
+                />
+              </FormField>
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Dialog.FooterButton
+                id="cancel-button"
+                cancel={true}
+                onClick={this.onClose}
+              >
+                Cancel
+              </Dialog.FooterButton>
+              <Dialog.FooterButton
+                id="submit-button"
+                accept={true}
+                disabled={false}
+                raised={true}
+                onClick={this.onSubmit}
+              >
+                Submit
+              </Dialog.FooterButton>
+            </Dialog.Footer>
+          </form>
+        </Dialog>
+        <Snackbar
+          ref={snack => {
+            this.snack = snack;
+          }}
+        />
+      </div>
+    );
+  }
+}
 $.ajaxSetup({
   beforeSend: function(xhr, settings) {
     if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
@@ -538,6 +643,29 @@ function getCsrfToken() {
   return document
     .getElementsByName("csrfmiddlewaretoken")[0]
     .getAttribute("value");
+}
+
+function switchCompletion(component) {
+  $.post(component.props.switchURL, {
+    pk: JSON.stringify(component.state.object.id),
+    isCompleted: JSON.stringify(component.state.isCompleted)
+  })
+    .done(function(data) {
+      if (data.action == "posted") {
+        component.snack.MDComponent.show({
+          message: component.props.snackMessageOnSuccess
+        });
+      } else {
+        component.snack.MDComponent.show({
+          message: component.props.snackMessageOnFailure
+        });
+      }
+    })
+    .fail(function(data) {
+      component.snack.MDComponent.show({
+        message: component.props.snackMessageOnFailure
+      });
+    });
 }
 
 function removeNode(component) {
@@ -648,6 +776,28 @@ function createNode(component) {
 }
 
 export var currentComponentInstance = null;
+export var currentStudentComponentInstance = null;
+
+export function injectStudentCompletionStatusDialog(
+  switchURL,
+  snackMessageOnSuccess,
+  snackMessageOnFailure
+) {
+  if (
+    document.body.contains(
+      document.getElementById("student-node-form-container")
+    )
+  ) {
+    render(
+      <StudentCompletionStatusDialog
+        switchURL={switchURL}
+        snackMessageOnSuccess={snackMessageOnSuccess}
+        snackMessageOnFailure={snackMessageOnFailure}
+      />,
+      document.getElementById("student-node-form-container")
+    );
+  }
+}
 
 export function injectDialogForm(
   createURL,

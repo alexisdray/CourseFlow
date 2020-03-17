@@ -1,4 +1,4 @@
-{% load static i18n %} {% get_current_language as LANGUAGE_CODE %}
+{% load static compress i18n %} {% get_current_language as LANGUAGE_CODE %}
 <!DOCTYPE html>
 <html lang="{{LANGUAGE_CODE}}">
   <head>
@@ -40,22 +40,61 @@
     ></script>
 
     <!-- Internal resources -->
-
+    {% compress js %}
     <script
       src="{% static 'course_flow/js/scripts.min.js' %}"
       defer="true"
       charset="utf-8"
     ></script>
-
+    {% endcompress %}
+    <!-- -->
+    {% compress js %}
+    <script
+      src="{% static 'user_feedback/js/scripts.min.js' %}"
+      defer="true"
+    ></script>
+    {% endcompress %}
     <!-- * CSS -->
+    {% compress css %}
     <link
       rel="stylesheet"
       href="{% static 'course_flow/css/preact_styles.css' %}"
     />
+    {% endcompress %}
+    <!--  -->
+    {% compress css %}
     <link
       rel="stylesheet"
       href="{% static 'course_flow/css/base_style.css' %}"
     />
+    {% endcompress %}
+    <style nonce="{{ request.csp_nonce }}">
+      #user-feedback-button {
+        color: #1976bc;
+        font-size: 32px !important;
+      }
+      #home-icon {
+        height: 32px;
+      }
+      #user-feedback-container {
+        bottom: 4px;
+        display: inline;
+        right: 8px;
+        position: absolute;
+      }
+      .topdropwrapper {
+        padding-top: 3px;
+      }
+      #username {
+        display: inline;
+        right: 40px;
+        position: absolute;
+      }
+      #username-container {
+        position: absolute;
+        right: 300px;
+      }
+    </style>
     {% block header %}{% endblock %}
   </head>
   <body id="site">
@@ -75,6 +114,23 @@
             ><img src="{% static 'course_flow/img/saltise_logo.svg'%}"
           /></a>
         </div>
+        <div class="topdropwrapper">
+          <button class="topdropbutton">
+            <a id="home-icon-link" href="{% url 'course_flow:home' %}"
+              ><img
+                id="home-icon"
+                src="{% static 'course_flow/img/home-24px.svg' %}"
+            /></a>
+          </button>
+        </div>
+        <div id="username-container" class="topdropwrapper">
+          <button id="username" class="topdropbutton">
+            {{ user.username }}
+          </button>
+        </div>
+        <div class="topdropwrapper">
+          <div id="user-feedback-container"></div>
+        </div>
       </div>
     </div>
 
@@ -82,5 +138,6 @@
     <footer>{% block foot %}{% endblock %}</footer>
     {% csrf_token %}
   </body>
+
   {% block scripts %} {% endblock %}
 </html>

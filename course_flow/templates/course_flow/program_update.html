@@ -28,10 +28,16 @@
 <script nonce="{{ request.csp_nonce }}">
         window.addEventListener("load", function(){
 
+          userFeedback.injectDialog(
+            "{% trans 'Let us know how we can improve your experience!' %}",
+            "{% static 'course_flow/brand/SCIVERO-LOGO-DARK.png' %}",
+            "{% trans 'Thanks for your feedback!' %}",
+            "{% trans 'Sorry, please try again later!' %}",
+            "{% url 'user_feedback:post' %}"
+          );
+
           let programJson = null;
           const componentBoardJson = {{ owned_component_json|safe }};
-
-          console.log(programJson);
 
           root.injectDialogForm(
             "{% url 'course_flow:dialog-form-create' %}",
@@ -63,7 +69,7 @@
 
           const programWidth = 2*programPadding+componentTotalSpacingHorizontal*2-componentSpacingHorizontal;
 
-          const classificationLabels = ["Course","Assesment"];
+          const classificationLabels = ["Course","Assessment"];
 
 
           function fetchThenRenderProgram(){
@@ -93,14 +99,10 @@
 
               boardComponents
                 .append('text')
-                .style('font-family', 'Roboto')
                 .attr('class', 'component-title')
                 .attr('x', "15")
                 .attr('y', "20")
                 .attr('dy', 6)
-                .style('font-size', 16)
-                .style('fill', "white")
-                .style('pointer-events', 'none')
                 .text(d => d.content_object.title);
 
                   const dragDropIcons = boardComponents
@@ -193,37 +195,25 @@
               program
                 .append('text')
                 .attr('id','program-title')
-                .style('font-family', 'Roboto')
                 .attr('x', "15")
                 .attr('y', "20")
                 .attr('dy', 6)
-                .style('font-size', 18)
-                .style('fill', "white")
-                .style('pointer-events', 'none')
                 .text(programJson.title);
 
               program
                 .append('text')
                 .attr('id','program-author')
-                .style('font-family', 'Roboto')
                 .attr('x', "15")
                 .attr('y', "40")
                 .attr('dy', 6)
-                .style('font-size', 12)
-                .style('fill', 'white')
-                .style('pointer-events', 'none')
                 .text("created by "+programJson.author);
 
               program
                 .append('text')
                 .attr('id','program-description')
-                .style('font-family', 'Roboto')
                 .attr('x', "15")
                 .attr('y', "70")
                 .attr('dy', 6)
-                .style('font-size', 14)
-                .style('fill', "white")
-                .style('pointer-events', 'none')
                 .text(programJson.description);
 
               program.append("g")
@@ -285,15 +275,11 @@
                 for (let i=0; i<2; i++) {
                   program
                     .append('text')
-                    .style('font-family', 'Roboto')
-                    .attr('class','activity-classification')
+                    .attr('class','program-classification')
                     .attr('text-anchor',"middle")
                     .attr('x', `${componentTotalSpacingHorizontal*i+componentTotalSpacingHorizontal/2}`)
                     .attr('y', "160")
                     .attr('dy', 6)
-                    .style('font-size', 16)
-                    .style('fill', "white")
-                    .style('pointer-events', 'none')
                     .text(classificationLabels[i]);
                 }
 
@@ -320,11 +306,7 @@
 
               let rects = svg.selectAll('.component')['_groups'][0];
 
-              console.log(rects);
-
               sortedRects = [rects.length];
-
-              console.log(rects.length)
 
               for(let i=0; i<rects.length; i++){
                   for(let j=0; j<rects.length; j++){
@@ -335,8 +317,6 @@
                   else if(rects[j].__data__.rank>rects.length-1) sortedRects[rects.length-1]=rects[j];
                 }
               }
-
-              console.log(sortedRects);
 
               for(let i=0; i<rects.length-1; i++){
                   svg.append("path")
@@ -366,26 +346,20 @@
 
             components
               .append('text')
-              .style('font-family', 'Roboto')
               .attr('class', 'component-title')
               .attr('x', "15")
               .attr('y', "20")
               .attr('dy', 6)
-              .style('font-size', 18)
-              .style('fill', "white")
-              .style('pointer-events', 'none')
+              .style('font-size', componentHeight/10)
               .text(d => d.component.content_object.title);
 
               components
                 .append('text')
-                .style('font-family', 'Roboto')
                 .attr('class', 'component-author')
                 .attr('x', "15")
                 .attr('y', "40")
                 .attr('dy', 6)
-                .style('font-size', 12)
-                .style('fill', 'white')
-                .style('pointer-events', 'none')
+                .style('font-size', componentHeight/16)
                 .text(d=> "created by "+d.component.content_object.author);
 
 
@@ -418,14 +392,11 @@
 
                 components
                   .append('text')
-                  .style('font-family', 'Roboto')
                   .attr('class', 'component-description')
                   .attr('x', "15")
                   .attr('y', "5")
                   .attr('dy', 6)
-                  .style('font-size', componentHeight/15)
-                  .style('fill', "white")
-                  .style('pointer-events', 'none')
+                  .style('font-size', componentHeight/14)
                   .text(d => d.component.content_object.description)
                   .call(wrap, componentWidth-60);
 

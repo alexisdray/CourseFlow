@@ -19,8 +19,9 @@ def flow_patterns():
         url(r"^register/$", views.registration_view, name="registration"),
         url(
             r"^login/$",
-            auth_views.LoginView.as_view(),
-            {"template_name": "registration/login.html"},
+            auth_views.LoginView.as_view(
+                template_name="course_flow/registration/login.html"
+            ),
             name="login",
         ),
         url(r"^logout/$", auth_views.LogoutView.as_view(), name="logout"),
@@ -51,6 +52,16 @@ def flow_patterns():
             name="course-detail-view",
         ),
         url(
+            r"^course/(?P<pk>[0-9]+)/static/$",
+            views.StaticCourseDetailView.as_view(),
+            name="static-course-detail-view",
+        ),
+        url(
+            r"^course/(?P<pk>[0-9]+)/student/$",
+            views.StudentCourseDetailView.as_view(),
+            name="student-course-detail-view",
+        ),
+        url(
             r"^course/(?P<pk>[0-9]+)/update/$",
             views.CourseUpdateView.as_view(),
             name="course-update",
@@ -64,6 +75,16 @@ def flow_patterns():
             r"^activity/(?P<pk>[0-9]+)/$",
             views.ActivityDetailView.as_view(),
             name="activity-detail-view",
+        ),
+        url(
+            r"^activity/(?P<pk>[0-9]+)/static/$",
+            views.StaticActivityDetailView.as_view(),
+            name="static-activity-detail-view",
+        ),
+        url(
+            r"^activity/(?P<pk>[0-9]+)/student/$",
+            views.StudentActivityDetailView.as_view(),
+            name="student-activity-detail-view",
         ),
         url(
             r"^activity/(?P<pk>[0-9]+)/update/$",
@@ -118,6 +139,46 @@ def flow_patterns():
             r"^dialog-form/remove",
             views.dialog_form_remove,
             name="dialog-form-remove",
+        ),
+        url(
+            r"^course/duplication",
+            views.duplicate_course_ajax,
+            name="course-duplication",
+        ),
+        url(
+            r"^activity/duplication",
+            views.duplicate_activity_ajax,
+            name="activity-duplication",
+        ),
+        url(
+            r"^node/switch-completion-status",
+            views.switch_node_completion_status,
+            name="switch-node-completion-status",
+        ),
+        url(
+            r"^component/switch-completion-status",
+            views.switch_component_completion_status,
+            name="switch-component-completion-status",
+        ),
+        url(
+            r"^node/get-completion-status",
+            views.get_node_completion_status,
+            name="get-node-completion-status",
+        ),
+        url(
+            r"^component/get-completion-status",
+            views.get_component_completion_status,
+            name="get-component-completion-status",
+        ),
+        url(
+            r"^node/get-completion-count",
+            views.get_node_completion_count,
+            name="get-node-completion-count",
+        ),
+        url(
+            r"^component/get-completion-count",
+            views.get_component_completion_count,
+            name="get-component-completion-count",
         ),
     ] + router.urls
 

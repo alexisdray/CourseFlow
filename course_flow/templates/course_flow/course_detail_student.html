@@ -9,7 +9,8 @@
 {% block header %}{% endblock %}
 <!-- -->
 {% block body %}
-<svg width="2000" height="10000"></svg>
+<svg width="2000" height="2000"></svg>
+<div id="student-node-form-container"></div>
 {% endblock %}
 <!-- -->
 {% block foot %} {% endblock %}
@@ -19,6 +20,9 @@
 {% block scripts %}
 <script nonce="{{ request.csp_nonce }}">
   window.addEventListener("load", function() {
+    d3.select("#home-icon-link").attr("href", "{% url 'student-page' %}");
+    d3.select("#username").text("{{ user.email }}");
+    d3.select("body").style("background-color", "rgb(65,80,96)");
 
     userFeedback.injectDialog(
       "{% trans 'Let us know how we can improve your experience!' %}",
@@ -26,6 +30,12 @@
       "{% trans 'Thanks for your feedback!' %}",
       "{% trans 'Sorry, please try again later!' %}",
       "{% url 'user_feedback:post' %}"
+    );
+
+    root.injectStudentCompletionStatusDialog(
+      "{% url 'course_flow:switch-component-completion-status' %}",
+      "{% trans 'posting worked' %}",
+      "{% trans 'posting didnt work' %}"
     );
 
     let courseJson = null;
@@ -122,38 +132,6 @@
         .attr("dy", 6)
         .text(jsonData.description);
 
-      {% if user == object.author %}
-
-      svgCourse
-        .append("g")
-        .attr("class", "action-icon")
-        .attr("id", "update-course")
-        .on("click", function(d, i) {
-          window.location.href =
-            "{% url 'course_flow:course-update' pk=object.pk %}";
-        })
-        .append("image")
-        .attr("x", `${weekWidth - 40}`)
-        .attr("y", `${55}`)
-        .attr("width", `${31}`)
-        .attr("height", `${31}`)
-        .attr("xlink:href", "{% static 'course_flow/img/pencil.svg' %}");
-
-      {% endif %}
-
-      svgCourse
-        .append("g")
-        .attr("class", "action-icon")
-        .attr("id", "clone-course")
-        .on("click", cloneCourse)
-        .append("image")
-        .attr("x", `${weekWidth - 40}`)
-        .attr("y", `${15}`)
-        .attr("width", `${31}`)
-        .attr("height", `${31}`)
-        .attr("xlink:href", "{% static 'course_flow/img/file_copy-24px.svg' %}");
-
-
       for (let i = 0; i < 4; i++) {
         svgCourse
           .append("text")
@@ -215,7 +193,7 @@
                 weekInfoHeight}`
             )
             .attr("width", `${weekWidth}`)
-            .attr("fill", "rgb(65,80,96)");
+            .attr("fill", "#1976BC");
           renderWeek(d.week.componentweek_set, d3.select(this));
         });
 
@@ -245,8 +223,6 @@
         .attr("y", "40")
         .attr("dy", 6)
         .text(d => "created by " + d.week.author);
-
-
     }
 
     function pathToNextSiblingRect(s, i) {
@@ -279,7 +255,6 @@
 
       sortedRects = [rects.length];
 
-
       for (let i = 0; i < rects.length; i++) {
         for (let j = 0; j < rects.length; j++) {
           if (i == rects[j].__data__.rank) {
@@ -289,7 +264,6 @@
             sortedRects[rects.length - 1] = rects[j];
         }
       }
-
 
       for (let i = 0; i < rects.length - 1; i++) {
         svg
@@ -330,7 +304,7 @@
         .attr("y", 0)
         .attr("rx", "6")
         .attr("class", "component-rect")
-        .attr("fill", "#1976BC")
+        .attr("fill", "rgb(65,80,96)")
         .attr("width", `${componentWidth}`)
         .attr("height", `${componentHeight}`)
         .style("pointer-events", "none");
@@ -341,7 +315,7 @@
         .attr("x", "15")
         .attr("y", "20")
         .attr("dy", 6)
-        .style("font-size", componentHeight/12)
+        .style("font-size", componentHeight / 12)
         .text(d => d.component.content_object.title);
 
       components
@@ -350,35 +324,48 @@
         .attr("x", "15")
         .attr("y", "40")
         .attr("dy", 6)
-        .style("font-size", componentHeight/18)
+        .style("font-size", componentHeight / 18)
         .text(d => "created by " + d.component.content_object.author);
 
-        // following function taken from Mike Bostock's 'Wrapping Long Labels'
+      // following function taken from Mike Bostock's 'Wrapping Long Labels'
 
       function wrap(text, width) {
-          text.each(function() {
-            var text = d3.select(this),
-                words = text.text().split(/\s+/).reverse(),
-                word,
-                line = [],
-                lineNumber = 0,
-                lineHeight = 1.5, // ems
-                y = text.attr("y")
-                x = text.attr("x"),
-                dy = parseFloat(text.attr("dy")),
-                tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "em");
-            while (word = words.pop()) {
-              line.push(word);
+        text.each(function() {
+          var text = d3.select(this),
+            words = text
+              .text()
+              .split(/\s+/)
+              .reverse(),
+            word,
+            line = [],
+            lineNumber = 0,
+            lineHeight = 1.5, // ems
+            y = text.attr("y");
+          (x = text.attr("x")),
+            (dy = parseFloat(text.attr("dy"))),
+            (tspan = text
+              .text(null)
+              .append("tspan")
+              .attr("x", x)
+              .attr("y", y)
+              .attr("dy", dy + "em"));
+          while ((word = words.pop())) {
+            line.push(word);
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+              line.pop();
               tspan.text(line.join(" "));
-              if (tspan.node().getComputedTextLength() > width) {
-                line.pop();
-                tspan.text(line.join(" "));
-                line = [word];
-                tspan = text.append("tspan").attr("x", x).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
-              }
+              line = [word];
+              tspan = text
+                .append("tspan")
+                .attr("x", x)
+                .attr("y", y)
+                .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                .text(word);
             }
-          });
-        }
+          }
+        });
+      }
 
       components
         .append("text")
@@ -386,30 +373,33 @@
         .attr("x", "15")
         .attr("y", "5")
         .attr("dy", 6)
-        .style("font-size", componentHeight/16)
+        .style("font-size", componentHeight / 16)
         .text(d => d.component.content_object.description)
-        .call(wrap, componentWidth-35)
+        .call(wrap, componentWidth - 35);
 
       components
         .append("g")
-        .attr("class", function(d,i){
-          if( d3.select(this.parentNode).node().__data__.component
-            .content_type_in_text == "activity"
-            ){
-              return "action-icon view-component";
-            }else{
-              return "";
-            }
-        })
-        .on("mousedown", function(d, i) {
-          if( d3.select(this.parentNode).node().__data__.component
-            .content_type_in_text == "activity"
-            ){
-            window.location.href = "{% url 'course_flow:activity-detail-view' pk=0 %}".replace(
-                "0",
-                d3.select(this.parentNode).node().__data__.component
-                  .content_object.id
-              );
+        .attr("class", "action-icon view-component")
+        .on("mousedown", async function(d, i) {
+          if (
+            d3.select(this.parentNode).node().__data__.component
+              .content_type_in_text == "activity"
+          ) {
+            window.location.href = "{% url 'course_flow:student-activity-detail-view' pk=0 %}".replace(
+              "0",
+              d3.select(this.parentNode).node().__data__.component
+                .content_object.id
+            );
+          } else {
+            const completionStatus = await getCompletionStatus(
+              d3.select(this.parentNode).node().__data__.component.id
+            );
+            root.currentStudentComponentInstance.setState({
+              object: d3.select(this.parentNode).node().__data__.component,
+              isComponent: true,
+              isCompleted: completionStatus
+            });
+            root.currentStudentComponentInstance.dlg.MDComponent.show();
           }
         })
         .append("image")
@@ -417,15 +407,32 @@
         .attr("y", `${10}`)
         .attr("width", `${31}`)
         .attr("height", `${31}`)
-        .attr("xlink:href", "{% static 'course_flow/img/pageview-grey.svg' %}")
-        .style("opacity", function(d, i){
-          if(
+        .each(async function() {
+          if (
             d3.select(this.parentNode).node().__data__.component
               .content_type_in_text == "activity"
-          ){
-            return "1";
-          }else{
-            return "0";
+          ) {
+            d3.select(this).attr(
+              "xlink:href",
+              "{% static 'course_flow/img/pageview-grey.svg' %}"
+            );
+          } else {
+            const completionStatus = await getCompletionStatus(
+              d3.select(this.parentNode).node().__data__.component.id
+            );
+            if (completionStatus) {
+              console.log("Completion status is true");
+              d3.select(this).attr(
+                "xlink:href",
+                "{% static 'course_flow/img/info-green.svg' %}"
+              );
+            } else {
+              console.log("Completion status is not true");
+              d3.select(this).attr(
+                "xlink:href",
+                "{% static 'course_flow/img/info-24px.svg' %}"
+              );
+            }
           }
         });
 
@@ -433,30 +440,36 @@
     }
 
     $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
-            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", getCsrfToken());
-            }
+      beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+          xhr.setRequestHeader("X-CSRFToken", getCsrfToken());
         }
+      },
+      success: function(resp) {
+        if (resp.action != "got") {
+          fetchThenRenderCourse();
+        }
+      }
     });
 
     function csrfSafeMethod(method) {
-
-        return /^(GET|HEAD|OPTIONS|TRACE)$/.test(method);
+      return /^(GET|HEAD|OPTIONS|TRACE)$/.test(method);
     }
     function getCsrfToken() {
-        return document
-          .getElementsByName("csrfmiddlewaretoken")[0]
-          .getAttribute("value");
-      }
+      return document
+        .getElementsByName("csrfmiddlewaretoken")[0]
+        .getAttribute("value");
+    }
 
-    function cloneCourse(){
-      $.post("{% url 'course_flow:course-duplication' %}", {coursePk: courseJson.id})
-      .done(function(data) {
-      if (data.action == "posted") {
-        window.location.href = "{% url 'course_flow:course-update' pk=0 %}".replace(0, data.clone_pk);
-      }
-    });
+    async function getCompletionStatus(componentPk) {
+      let resp = await $.get(
+        "{% url 'course_flow:get-component-completion-status' %}",
+        {
+          componentPk: componentPk
+        }
+      );
+      console.log(resp.completion_status);
+      return resp.completion_status;
     }
   });
 </script>
