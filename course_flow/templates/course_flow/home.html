@@ -1,444 +1,61 @@
 {% extends "course_flow/base.html" %}
 <!-- -->
-{% load static i18n %}
+{% load static i18n %} {% load course_flow_templatetags %}
 <!-- -->
-{% block header %}
-<style nonce="{{ request.csp_nonce }}">
-  body {
-    background-color: #1976bc;
-  }
-  .create-button {
-    transform: translateY(10px);
-  }
-  img.link-image {
-    height: 35px;
-  }
-  .mdc-card {
-    background-color: white;
-    margin-bottom: 10px;
-    padding: 20px 20px 12px;
-    border-radius: 10px;
-    box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2),
-      0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
-    max-width: 400px;
-  }
-  .mdc-typography--title {
-    font-family: "Montserrat", serif;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-font-smoothing: antialiased;
-    font-size: 1.25rem;
-    line-height: 2rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    text-decoration: inherit;
-    text-transform: inherit;
-    font-weight: bold;
-  }
-  .mdc-typography--caption {
-    font-family: "Montserrat", serif;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-font-smoothing: antialiased;
-    font-size: 0.75rem;
-    line-height: 1.25rem;
-    font-weight: 400;
-    letter-spacing: 0.08em;
-    text-decoration: inherit;
-    text-transform: inherit;
-  }
-  .mdc-typography--body1 {
-    font-size: 16px;
-    letter-spacing: 0em;
-    font-family: "Montserrat", serif;
-    -moz-osx-font-smoothing: grayscale;
-    -webkit-font-smoothing: antialiased;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    font-weight: 400;
-    letter-spacing: 0.04em;
-    text-decoration: inherit;
-    text-transform: inherit;
-  }
-  .mdc-card__actions {
-    display: -webkit-flex;
-    display: flex;
-    -webkit-flex-direction: row;
-    flex-direction: row;
-    -webkit-align-items: center;
-    align-items: center;
-    box-sizing: border-box;
-    min-height: 52px;
-    padding: 8px;
-  }
-  .mdc-card__action-buttons,
-  .mdc-card__action-icons {
-    display: -webkit-flex;
-    display: flex;
-    -webkit-flex-direction: row;
-    flex-direction: row;
-    -webkit-align-items: center;
-    align-items: center;
-    box-sizing: border-box;
-  }
-  .mdc-card__action-icons {
-    margin-left: auto;
-    margin-right: 0;
-  }
-  .mdc-card__action-icons,
-  .mdc-typography--caption,
-  .mdc-typography--body1,
-  .mdc-typography--title {
-    color: #1976bc;
-  }
-</style>
-{% endblock %}
+{% block header %} {% endblock %}
 <!-- -->
 {% block title %}{% endblock %}
 <!-- -->
 {% block metadescription %} {% endblock %}
 <!-- -->
 {% block body %}
-<svg width="500" height="100">
-  <defs>
-    <filter id="selection-shadow">
-      <feDropShadow dx="1" dy="1" stdDeviation="2" />
-    </filter>
-  </defs>
-</svg>
-<div id="content-container">
-  <div id="user-content-container" class="sub-container">
-    <h2>
-      Your Programs
-      <a href="{% url 'course_flow:program-create' %}"
-        ><img
-          class="create-button link-image"
-          src="{% static 'course_flow/img/add-square-button.svg' %}"
-      /></a>
-    </h2>
-    <br />
-    {% for program in owned_programs %}
-
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ program.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if program.author %}Created by {{ program.author.username }}
-        <!-- -->
-        {% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ program.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ program.created_on }}</div>
-          </div>
+<div id="content-container" class="body-wrapper">
+    <div class="home-menu-container">
+        <h1>CourseFlow</h1>
+        <hr>
+        <p>{% trans "Welcome to CourseFlow, a course, curriculum, and activity planning tool by SALTISE." %}</p>
+        <h3>{% trans "Quick Links:" %}</h3>
+        <div class="home-menu-grid">
+            <div class="home-item">
+                <a class="hover-shade" href='{% url "course_flow:my-projects" %}'><h4>{% trans "My Projects" %}</h4>
+                <p>{% trans "Explore and create your projects" %}</p></a>
+                {% for project in user.project_set.all|not_deleted|slice:":7" %}
+                  <a class="hover-shade"
+                        href="{% url 'course_flow:project-update' pk=project.pk %}"
+                     >
+                    {{ project.title }}
+                  </a>
+                {% endfor %}
+                <a class="hover-shade" href="{% url 'course_flow:project-create' %}">{% trans "+Create new project" %}</a>
+            </div>
+            <div class="home-item">
+                <a class="hover-shade" href='{% url "course_flow:my-favourites" %}'><h4>{% trans "My Favourites" %}</h4>
+                <p>{% trans "Your favourited items" %}</p></a>
+                {% for favourite in user.favourite_set.all|not_deleted_favourites|slice:":5" %}
+                  <a class="hover-shade"
+                     {% if favourite.content_object.type == "project" %}
+                        href="{% url 'course_flow:project-update' pk=favourite.content_object.pk %}"
+                     {% else %}
+                        href="{% url 'course_flow:workflow-update' pk=favourite.content_object.pk %}"
+                     {% endif %}
+                     >
+                    {{ favourite.content_object }}
+                  </a>
+                {% endfor %}
+            </div>
+            <div class="home-item">
+                <a class="hover-shade" href='{% url "course_flow:explore" %}?types[]=activity&types[]=course&types[]=program&types[]=project'><h4>{% trans "Explore" %}</h4>
+                <p>{% trans "Explore published material by other users" %}</p>
+                <div class="home-item-icon-container">
+                <img src = "{% static 'course_flow/img/images_svg/explore.svg' %}"/>
+                    </div>
+                </a>
+                
+            </div>
         </div>
-        <div class="mdc-card__action-icons">
-          {% if user.pk is program.author.pk %}
-          <!-- -->
-          <a href="{% url 'course_flow:program-update' pk=program.id %}">
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pencil-blue.svg' %}"
-            />
-          </a>
-          <!-- -->
-          {% else %}
-          <!-- -->
-          <a href="{% url 'course_flow:program-detail-view' pk=program.id %}"
-            ><img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-          /></a>
-          <!-- -->
-          {% endif %}
-        </div>
-      </div>
     </div>
-    {% empty %}
-    <p>{% trans "You haven't created a program yet" %}</p>
-    {% endfor %}
-    <!-- -->
-    <h2>
-      Your Courses
-      <a href="{% url 'course_flow:course-create' %}"
-        ><img
-          class="create-button link-image"
-          src="{% static 'course_flow/img/add-square-button.svg' %}"
-      /></a>
-    </h2>
-    <br />
-    {% for course in owned_courses %}
 
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ course.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if course.author %}Created by {{ course.author.username }}{% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ course.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ course.created_on }}</div>
-          </div>
-        </div>
-        <div class="mdc-card__action-icons">
-          {% if user.pk is course.author.pk %}
-          <!-- -->
-          <a href="{% url 'course_flow:course-update' pk=course.id %}">
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pencil-blue.svg' %}"
-            />
-          </a>
-          <!-- -->
-          {% else %}
-          <!-- -->
-          <a href="{% url 'course_flow:course-detail-view' pk=course.id %}"
-            ><img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-          /></a>
-          <!-- -->
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <p>{% trans "You haven't created a course yet." %}</p>
-    {% endfor %}
-    <!-- -->
-    <h2>
-      Your Live Courses
-    </h2>
-    <br />
-    <!-- -->
-    {% for course in owned_static_courses %}
 
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ course.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if course.author %}Created by {{ course.author.username }}{% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ course.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ course.created_on }}</div>
-          </div>
-        </div>
-        <div class="mdc-card__action-icons">
-          <!-- -->
-          <a
-            href="{% url 'course_flow:static-course-detail-view' pk=course.id %}"
-          >
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-            />
-          </a>
-          <!-- -->
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <p>{% trans "You haven't connnected a course to a group yet." %}</p>
-    {% endfor %}
-    <!-- -->
-    <h2>
-      Your Activities
-      <a href="{% url 'course_flow:activity-create' %}"
-        ><img
-          class="create-button link-image"
-          src="{% static 'course_flow/img/add-square-button.svg' %}"
-      /></a>
-    </h2>
-    <br />
-    {% for activity in owned_activities %}
-
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ activity.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if activity.author %}Created by {{ activity.author.username }}
-        <!-- -->
-        {% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ activity.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ activity.created_on }}</div>
-          </div>
-        </div>
-        <div class="mdc-card__action-icons">
-          {% if user.pk is activity.author.pk %}
-          <!-- -->
-          <a href="{% url 'course_flow:activity-update' pk=activity.id %}">
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pencil-blue.svg' %}"
-            />
-          </a>
-          <!-- -->
-          {% else %}
-          <!-- -->
-          <a href="{% url 'course_flow:activity-detail-view' pk=activity.id %}"
-            ><img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-          /></a>
-          <!-- -->
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <p>{% trans "You haven't created an activity yet." %}</p>
-    {% endfor %}
-  </div>
-  <div id="total-content-container" class="sub-container">
-    <h2>
-      All Programs
-    </h2>
-    <br />
-    {% for program in programs %}
-
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ program.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if program.author %}Created by {{ program.author.username }}
-        <!-- -->
-        {% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ program.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ program.created_on }}</div>
-          </div>
-        </div>
-        <div class="mdc-card__action-icons">
-          {% if user.pk is program.author.pk %}
-          <!-- -->
-          <a href="{% url 'course_flow:program-update' pk=program.id %}">
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pencil-blue.svg' %}"
-            />
-          </a>
-          <!-- -->
-          {% else %}
-          <!-- -->
-          <a href="{% url 'course_flow:program-detail-view' pk=program.id %}"
-            ><img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-          /></a>
-          <!-- -->
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <p>{% trans "Nobody else has created a program yet." %}</p>
-    {% endfor %}
-    <!-- -->
-    <h2>
-      All Courses
-    </h2>
-    <br />
-    {% for course in courses %}
-
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ course.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if course.author %}Created by {{ course.author.username }}{% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ course.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ course.created_on }}</div>
-          </div>
-        </div>
-        <div class="mdc-card__action-icons">
-          {% if user.pk is course.author.pk %}
-          <!-- -->
-          <a href="{% url 'course_flow:course-update' pk=course.id %}">
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pencil-blue.svg' %}"
-            />
-          </a>
-          <!-- -->
-          {% else %}
-          <!-- -->
-          <a
-            href="{% url 'course_flow:static-course-detail-view' pk=course.id %}"
-            ><img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-          /></a>
-          <!-- -->
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <p>{% trans "Nobody else has created a course yet." %}</p>
-    {% endfor %}
-    <!-- -->
-    <h2>
-      All Activities
-    </h2>
-    <br />
-    {% for activity in activities %}
-
-    <div class="mdc-card" id="card">
-      <div class="mdc-typography--title">{{ activity.title }}</div>
-      <div class="mdc-typography--caption">
-        {% if activity.author %}Created by {{ activity.author.username }}
-        <!-- -->
-        {% endif %}
-      </div>
-      <div class="mdc-typography--body1">{{ activity.description }}</div>
-      <div class="mdc-card__actions">
-        <div class="mdc-card__action-buttons">
-          <div class="mdc-typography--caption caption">
-            <div>Published on {{ activity.created_on }}</div>
-          </div>
-        </div>
-        <div class="mdc-card__action-icons">
-          {% if user.pk is activity.author.pk %}
-          <!-- -->
-          <a href="{% url 'course_flow:activity-update' pk=activity.id %}">
-            <!-- -->
-            <img
-              class="link-image"
-              src="{% static 'course_flow/img/pencil-blue.svg' %}"
-            />
-          </a>
-          <!-- -->
-          {% else %}
-          <!-- -->
-          <a href="{% url 'course_flow:activity-detail-view' pk=activity.id %}"
-            ><img
-              class="link-image"
-              src="{% static 'course_flow/img/pageview-24px.svg' %}"
-          /></a>
-          <!-- -->
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% empty %}
-    <p>{% trans "Nobody else has created an activity yet." %}</p>
-    {% endfor %}
-  </div>
 </div>
 <!-- -->
 {% endblock %}
@@ -447,36 +64,34 @@
 <!-- -->
 {% csrf_token %}
 <!-- -->
-{% block scripts %}
-<script nonce="{{ request.csp_nonce }}">
-  window.addEventListener("load", function() {
-    const feedback = () => {
-      return user_feedback.h(user_feedback.App, {
-        acceptText: "{% trans 'Send' %}",
-        cancelText: "{% trans 'Cancel' %}",
-        charCountText: "{% trans 'characters remaining' %}",
-        description: "{% trans 'Leave feedback or get help' %}",
-        feedbackTypes: [
-          { value: 1, text: "Bug report" },
-          { value: 2, text: "Feature request" },
-          { value: 3, text: "General feedback" }
-        ],
-        menuFeedbackText: "{% trans 'Give Feedback' %}",
-        menuHelpText: "{% trans 'Help' %}",
-        menuHelpUrl: "#",
-        placeholder: "{% trans 'Let us know what is on your mind...' %}",
-        snackbarError:
-          "{% trans 'An error occurred.  Please try again later.' %}",
-        snackbarSuccess: "{% trans 'Thanks for your feedback!' %}",
-        text: "",
-        title: "{% trans 'How can we improve your experience?' %}",
-        url: "{% url 'user_feedback:post' %}"
+{% block scripts %} {{ block.super }}
+<script nonce="{{request.csp_nonce}}">
+
+  const iconpath = "{% static 'course_flow/img/images_svg/' %}";
+  const create_path = {
+      project:"{% url 'course_flow:project-create' %}",
+      activity:"{% url 'course_flow:activity-strategy-create' %}",
+      course:"{% url 'course_flow:course-strategy-create' %}"
+  };
+  const user_id = {{ user.id }};
+  const read_only=false;
+
+  
+
+
+
+function deleteSelf(objectID,objectType,soft=false,callBackFunction=()=>console.log("success")){
+    let path;
+    if(soft)path=post_paths.delete_self_soft;
+    else path=post_pathsdelete_self;
+    try{
+        $.post(path, {
+          objectID:JSON.stringify(objectID),
+          objectType:JSON.stringify(objectType)
+      }).done(function(data){
+          if(data.action == "posted") callBackFunction(data);
+          else console.log("Failed");
       });
-    };
-    user_feedback.render(
-      feedback(),
-      document.getElementById("user-feedback-app")
-    );
-  });
+  }
 </script>
 {% endblock %}

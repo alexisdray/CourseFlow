@@ -1,35 +1,37 @@
 from django.contrib import admin
 
 from .models import (
-    Node,
-    Strategy,
     Activity,
-    Preparation,
-    Assessment,
-    Artifact,
-    Component,
-    Week,
+    Column,
+    ColumnWorkflow,
     Course,
+    Node,
+    NodeLink,
+    NodeWeek,
+    Outcome,
+    OutcomeNode,
+    OutcomeOutcome,
     Program,
-    NodeStrategy,
-    StrategyActivity,
-    ComponentWeek,
-    WeekCourse,
-    ComponentProgram,
+    Project,
+    Week,
+    WeekWorkflow,
+    Workflow,
+    WorkflowProject,
 )
 
 admin.site.register(Node)
-admin.site.register(Strategy)
-admin.site.register(Activity)
-admin.site.register(Preparation)
-admin.site.register(Assessment)
-admin.site.register(Artifact)
-admin.site.register(Component)
+admin.site.register(Column)
+admin.site.register(ColumnWorkflow)
 admin.site.register(Week)
+admin.site.register(Activity)
 admin.site.register(Course)
 admin.site.register(Program)
-admin.site.register(NodeStrategy)
-admin.site.register(StrategyActivity)
-admin.site.register(ComponentWeek)
-admin.site.register(WeekCourse)
-admin.site.register(ComponentProgram)
+admin.site.register(NodeWeek)
+admin.site.register(NodeLink)
+admin.site.register(WeekWorkflow)
+admin.site.register(Workflow)
+admin.site.register(Project)
+admin.site.register(WorkflowProject)
+admin.site.register(Outcome)
+admin.site.register(OutcomeNode)
+admin.site.register(OutcomeOutcome)

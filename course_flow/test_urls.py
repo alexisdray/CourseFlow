@@ -1,15 +1,46 @@
-from django.urls import include, path
 from django.contrib import admin
-from . import urls
+from django.contrib.auth import views as auth_views
+from django.urls import include, path
 
-app_name = "test_course_flow"
+from . import settings, urls, views
 
-urlpatterns = [
-    path(
-        "", include((urls.urlpatterns, urls.app_name), namespace="course_flow")
-    ),
-    path(
-        "feedback/", include("user_feedback.urls", namespace="user_feedback")
-    ),
-    path("admin/", admin.site.urls),
-]
+app_name = "course_flow"
+
+if settings.DEBUG:
+    import debug_toolbar
+
+
+def auth_patterns():
+    return [
+        path("register/", views.registration_view, name="registration"),
+        path(
+            "login/",
+            auth_views.LoginView.as_view(
+                template_name="course_flow/registration/login.html"
+            ),
+            name="login",
+        ),
+        path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    ]
+
+
+def app_patterns():
+    patterns = [
+        path(
+            "",
+            include(
+                (urls.urlpatterns, urls.app_name), namespace="course_flow",
+            ),
+        ),
+        path(
+            "feedback/",
+            include("user_feedback.urls", namespace="user_feedback"),
+        ),
+        path("admin/", admin.site.urls),
+    ]
+    if settings.DEBUG:
+        patterns += [path("__debug__/", include(debug_toolbar.urls))]
+    return patterns
+
+
+urlpatterns = sum([auth_patterns(), app_patterns()], [],)

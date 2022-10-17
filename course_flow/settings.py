@@ -19,12 +19,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 SECRET_KEY = "course_flow"
+# For LTI tests
+PASSWORD_KEY = "course_flow"
+LTI_CLIENT_KEY = "course_flow"
+LTI_CLIENT_SECRET = "course_flow"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+CHROMEDRIVER_PATH = None
 
 # Application definition
 
@@ -33,10 +40,16 @@ TEACHER_GROUP = "Teacher"
 ADMINS = [("John", "john@example.com"), ("Mary", "mary@example.com")]
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+DEFAULT_FROM_EMAIL = "noreply@courseflow.org"
+
+CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
+
 
 INSTALLED_APPS = [
     "compressor",
-    "django_lti_tool_provider",
     "user_feedback.apps.UserFeedbackConfig",
     "course_flow.apps.CourseFlowConfig",
     "rest_framework",
@@ -45,18 +58,42 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "daphne",
     "django.contrib.staticfiles",
+    "channels",
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "csp.middleware.CSPMiddleware",
+    "ratelimit.middleware.RatelimitMiddleware",
 ]
+
+# ASGI
+ASGI_APPLICATION = "course_flow.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+    },
+}
+
+# REDIS cache
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://127.0.0.1:6379/1",
+#         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+#     }
+# }
 
 ROOT_URLCONF = "course_flow.test_urls"
 
@@ -76,11 +113,35 @@ TEMPLATES = [
     }
 ]
 
-LOGIN_URL = "course_flow:login"
+CSP_INCLUDE_NONCE_IN = [
+    "script-src",
+    "style-src",
+]
+CSP_DEFAULT_SRC = ["'self'", "*.mydalite.org"]
+CSP_SCRIPT_SRC = [
+    "'self'",
+    "*.mydalite.org",
+    "d3js.org",
+    "ajax.googleapis.com",
+    "cdn.polyfill.io",
+    "cdn.quilljs.com",
+]
+CSP_STYLE_SRC = [
+    "'self'",
+    "*.mydalite.org",
+    "ajax.googleapis.com",
+    "cdn.quilljs.com",
+    "fonts.googleapis.com",
+]
+CSP_FONT_SRC = [
+    "'self'",
+    "*.mydalite.org",
+    "fonts.gstatic.com",
+]
 
+LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "course_flow:home"
-
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+LOGOUT_REDIRECT_URL = "login"
 
 ADMINS = [("John", "john@example.com"), ("Mary", "mary@example.com")]
 
@@ -91,6 +152,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+        "TEST": {"NAME": os.path.join(BASE_DIR, "db_test.sqlite3")},
+        "OPTIONS": {"timeout": 20},
     }
 }
 
@@ -148,6 +211,12 @@ REST_FRAMEWORK = {
     ]
 }
 
+COURSE_FLOW_RETURN_URL = {"name": "course_flow:home", "title": "myDalite"}
+
+COURSE_FLOW_LTI_ACCESS = True
+
+RATELIMIT_VIEW = "course_flow.views.ratelimited_view"
+
 """
 LOGGING = {
     "version": 1,
@@ -185,6 +254,7 @@ LOGGING = {
     },
 }
 """
+
 try:
     from .local_settings import *  # noqa F403
 
@@ -200,3 +270,14 @@ except ImportError:
         "see README.md."
     )
     pass
+
+# Run this AFTER importing local settings, as this is where debug will usually
+# be set to true
+if DEBUG:
+    INSTALLED_APPS += [
+        "debug_toolbar",
+    ]
+
+    MIDDLEWARE += [
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+    ]
