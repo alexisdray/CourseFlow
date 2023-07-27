@@ -1,4 +1,7 @@
 from django.apps import AppConfig
+from django.core.checks import register
+
+from .checks import check_return_url
 
 
 class CourseFlowConfig(AppConfig):
@@ -6,7 +9,4 @@ class CourseFlowConfig(AppConfig):
     verbose_name = "Course Flow"
 
     def ready(self):
-        from django_lti_tool_provider.views import LTIView  # noqa
-        from .lti import ApplicationHookManager  # noqa
-
-        LTIView.register_authentication_manager(ApplicationHookManager())
+        register(check_return_url)
