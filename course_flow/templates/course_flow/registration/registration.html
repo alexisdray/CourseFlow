@@ -14,24 +14,14 @@
     </filter>
   </defs>
 </svg>
-<form method="POST" id="registration-form">
-  {% csrf_token %} {{ form }}
-  <button id="register-button" type="submit">Register</button>
-</form>
+<div class="body-wrapper">
+    <form method="POST" id="registration-form">
+      {% csrf_token %} {{ form }}
+      <button id="register-button" type="submit">Register</button>
+    </form>
+</div>
 {% endblock %}
 <!-- -->
 {% block foot %} {% endblock %}
 <!-- -->
-{% block scripts %}
-<script nonce="{{ request.csp_nonce }}">
-  window.addEventListener("load", function() {
-    userFeedback.injectDialog(
-      "{% trans 'Let us know how we can improve your experience!' %}",
-      "{% static 'course_flow/brand/SCIVERO-LOGO-DARK.png' %}",
-      "{% trans 'Thanks for your feedback!' %}",
-      "{% trans 'Sorry, please try again later!' %}",
-      "{% url 'user_feedback:post' %}"
-    );
-  });
-</script>
-{% endblock %}
+{% block scripts %} {% endblock %}
